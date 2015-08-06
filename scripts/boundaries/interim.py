@@ -83,7 +83,7 @@ def move_downloaded_data(datadir, bdate):
   for file in ['interim_pl.grib', 'interim_sfc.grib']:
     try:
       shutil.move(file,os.path.join(datadir,bdate))
-    except OSError:
+    except IOError:
       pass
 
 
@@ -121,14 +121,19 @@ def main(args):
   # move downloaded data to data directory
   move_downloaded_data(args.datadir, re.sub('-','',date_string) + '00')
 
+def str2bool(v):
+  '''
+  convert string to boolean
+  '''
+  return v.lower() in ("yes", "true", "t", "1")
 
 if __name__=="__main__":
   # define argument parser
   parser = argparse.ArgumentParser(description='Download ERA-Interim fields (pl and sfc) to be used as WRF boundaries.')
   
   # optional arguments
-  parser.add_argument('--pl', help='download pressure level fields', default=True, type=bool, required=False)
-  parser.add_argument('--sfc', help='download surface level fields', default=True, type=bool, required=False)
+  parser.add_argument('--pl', help='download pressure level fields', default=True, type=str2bool, required=False)
+  parser.add_argument('--sfc', help='download surface level fields', default=True, type=str2bool, required=False)
   parser.add_argument('--date2', help='Optional second date YYYY-MM-DD. Data will be downloaded between --data and --data2 in used.', required=False, type=str)
   parser.add_argument('--datadir', help='destination directory [default: ' +
                       os.path.join(os.getcwd(),'ERAI') + ']',
