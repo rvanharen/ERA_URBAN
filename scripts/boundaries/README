@@ -1,0 +1,12 @@
+Needs an ECMWF web user ID.
+Register at: https://www.ecmwf.int/registration/?back=http://www.ecmwf.int/user/login/sso
+
+Personal api key should be added to $HOME/.ecmwfapirc. Once you are logged in with your persional ECMWF web user ID, get your personal key from https://api.ecmwf.int/v1/key/
+
+Content of $HOME/.ecmwfapirc 	
+
+{
+    "url"   : "https://api.ecmwf.int/v1",
+    "key"   : "xxxxxxxxxxxxxxxxxxxxxxxx",
+    "email" : "xxx@xxx.com"
+}
