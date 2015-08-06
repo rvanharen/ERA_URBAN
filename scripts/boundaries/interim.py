@@ -12,6 +12,7 @@ Notes:          -
 # import ecmwf api
 from ecmwfapi import ECMWFDataServer
 import argparse
+import os
 
 def define_pl_dict(date_string):
   ''' 
@@ -67,8 +68,27 @@ def check_date(date_text):
     raise ValueError("Date must be between 1979-01-01 and now: " + date_text)
   return datetime_object
 
+def move_downloaded_data(datadir, bdate):
+  '''
+  move downloaded files to data directory
+  '''
+  import shutil
+  # create destination directory, remove existing one if needed
+  try:
+    os.makedirs(os.path.join(datadir,bdate))
+  except OSError:  # directory exists
+    shutil.rmtree(os.path.join(datadir,bdate))
+    os.makedirs(os.path.join(datadir,bdate))
+  # move files
+  for file in ['interim_pl.grib', 'interim_sfc.grib']:
+    try:
+      shutil.move(file,os.path.join(datadir,bdate))
+    except OSError:
+      pass
+
 
 def main(args):
+  import re
   # define server
   server = ECMWFDataServer()
 
@@ -85,7 +105,6 @@ def main(args):
       date_string = args.date + '/to/' + args.date2
   else:
     date_string = args.date
-
   # define pressure and surface level dictionaries
   if args.pl:
     # define dictionary
@@ -98,6 +117,9 @@ def main(args):
     sfc = define_sfc_dict(date_string)
     # retrieve surface level data
     server.retrieve(sfc)
+  
+  # move downloaded data to data directory
+  move_downloaded_data(args.datadir, re.sub('-','',date_string) + '00')
 
 
 if __name__=="__main__":
@@ -108,7 +130,9 @@ if __name__=="__main__":
   parser.add_argument('--pl', help='download pressure level fields', default=True, type=bool, required=False)
   parser.add_argument('--sfc', help='download surface level fields', default=True, type=bool, required=False)
   parser.add_argument('--date2', help='Optional second date YYYY-MM-DD. Data will be downloaded between --data and --data2 in used.', required=False, type=str)
-  
+  parser.add_argument('--datadir', help='destination directory [default: ' +
+                      os.path.join(os.getcwd(),'ERAI') + ']',
+                      default=os.path.join(os.getcwd(),'ERAI'), required=False)
   # required arguments
   req = parser.add_argument_group('required arguments')
   req.add_argument('--date', help='Date YYYY-MM-DD', required=True, type=str)
