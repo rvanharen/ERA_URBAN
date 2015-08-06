@@ -10,3 +10,24 @@ Content of $HOME/.ecmwfapirc
     "key"   : "xxxxxxxxxxxxxxxxxxxxxxxx",
     "email" : "xxx@xxx.com"
 }
+
+################################################################################
+### interim.py                                                               ###
+################################################################################
+usage: interim.py [-h] [--pl PL] [--sfc SFC] [--date2 DATE2]
+                  [--datadir DATADIR] --date DATE
+
+Download ERA-Interim fields (pl and sfc) to be used as WRF boundaries.
+
+optional arguments:
+  -h, --help         show this help message and exit
+  --pl PL            download pressure level fields [boolean, default: true]
+  --sfc SFC          download surface level fields [boolean, default: true]
+  --date2 DATE2      Optional second date YYYY-MM-DD. Data will be downloaded
+                     between --data and --data2 in used.
+  --datadir DATADIR  destination directory [default:
+                     /data/github/ERA_URBAN/scripts/boundaries/ERAI]
+
+required arguments:
+  --date DATE        Date YYYY-MM-DD
+################################################################################

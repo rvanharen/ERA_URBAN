@@ -132,8 +132,10 @@ if __name__=="__main__":
   parser = argparse.ArgumentParser(description='Download ERA-Interim fields (pl and sfc) to be used as WRF boundaries.')
   
   # optional arguments
-  parser.add_argument('--pl', help='download pressure level fields', default=True, type=str2bool, required=False)
-  parser.add_argument('--sfc', help='download surface level fields', default=True, type=str2bool, required=False)
+  parser.add_argument('--pl', help='download pressure level fields [boolean, default: true]',
+                      default=True, type=str2bool, required=False)
+  parser.add_argument('--sfc', help='download surface level fields [boolean, default: true]',
+                      default=True, type=str2bool, required=False)
   parser.add_argument('--date2', help='Optional second date YYYY-MM-DD. Data will be downloaded between --data and --data2 in used.', required=False, type=str)
   parser.add_argument('--datadir', help='destination directory [default: ' +
                       os.path.join(os.getcwd(),'ERAI') + ']',
