@@ -1,10 +1,12 @@
 #!/usr/bin/env python2
 
-# NCEP reanalysis velden 
-
 '''
- description 
-
+  description:  Wrapper to create a single output file in LITTLE_R format from a
+                list of netcdf files defined in an input file.
+                Time window is extracted from obsproc.namelist.
+                Uses external packages: convert_littler_single and cdo
+  license:      APACHE 2.0
+  author:       Ronald van Haren (r.vanharen@esciencecenter.nl)
 '''
 
 # import main packages
@@ -14,7 +16,8 @@ import os
 
 class wrapper_littler:
   '''
-  description class
+  Wrapper class to create a single output file in LITTLE_R format from a
+  list of netcdf files defined in an input file.
   '''
   def __init__(self,filelist, obsproc_namelist):
     self.filelist = filelist
@@ -42,7 +45,9 @@ class wrapper_littler:
 
   def process_file(self, filename, idx):
     '''
-    description
+    process input file:
+      - extract time interval netcdf file
+      - convert extracted time interval to LITTLE_R format
     '''
     import subprocess
     import sys
@@ -59,7 +64,8 @@ class wrapper_littler:
     # execute command, catch exceptions
     try:
       # cdo requires shell=True in subprocess.call
-      retcode = subprocess.call(command, shell=True, stdout=open(os.devnull, 'wb'))
+      retcode = subprocess.call(command, shell=True, stdout=open(os.devnull,
+                                                                 'wb'))
     except OSError as e:
       print >>sys.stderr, "Execution failed:", e
     
@@ -71,7 +77,8 @@ class wrapper_littler:
     owd = os.getcwd()
     try:
       os.chdir('workdir')
-      retcode = subprocess.call('./convert_littler_single', stdout=open(os.devnull, 'wb'))
+      retcode = subprocess.call('./convert_littler_single',
+                                stdout=open(os.devnull, 'wb'))
     except OSError as e:
       print >>sys.stderr, "Execution failed:", e
     finally:
