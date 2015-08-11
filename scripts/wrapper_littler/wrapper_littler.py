@@ -44,6 +44,8 @@ class wrapper_littler:
     '''
     description
     '''
+    import subprocess
+    import sys
     # extract time interval from netcdf file using cdo
     
     # remove out.nc file if it exists
@@ -53,7 +55,14 @@ class wrapper_littler:
       pass
     # extract time interval from input netcdf file, save as out.nc  
     command = 'cdo seldate,' + self.t_min + ',' + self.t_max + ' ' + filename + ' workdir/out.nc'
-    os.system(command)
+    print command
+    # execute command, catch exceptions
+    try:
+      # cdo requires shell=True in subprocess.call
+      retcode = subprocess.call(command, shell=True, stdout=open(os.devnull, 'wb'))
+    except OSError as e:
+      print >>sys.stderr, "Execution failed:", e
+    
     # edit namelist
     namelist_set('workdir/wageningen_single.namelist', 'group_name:filename', 'out.nc')
     namelist_set('workdir/wageningen_single.namelist', 'group_name:outfile',
@@ -62,7 +71,9 @@ class wrapper_littler:
     owd = os.getcwd()
     try:
       os.chdir('workdir')
-      os.system('./convert_littler_single')
+      retcode = subprocess.call('./convert_littler_single', stdout=open(os.devnull, 'wb'))
+    except OSError as e:
+      print >>sys.stderr, "Execution failed:", e
     finally:
       os.chdir(owd)
 
