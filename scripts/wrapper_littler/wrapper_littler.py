@@ -6,7 +6,7 @@
                 Time window is extracted from obsproc.namelist.
                 Uses external packages: convert_littler_single and cdo
   license:      APACHE 2.0
-  author:       Ronald van Haren (r.vanharen@esciencecenter.nl)
+  author:       Ronald van Haren, NLeSC (r.vanharen@esciencecenter.nl)
 '''
 
 # import main packages
@@ -20,12 +20,23 @@ class wrapper_littler:
   list of netcdf files defined in an input file.
   '''
   def __init__(self,filelist, obsproc_namelist):
+    self.cleanup_workdir()
     self.filelist = filelist
     self.read_filelist()  # create list of filenames
     self.namelist_obsproc(obsproc_namelist)  # extract time-window
     for idx, filename in enumerate(self.files):  # loop over all files
       self.process_file(filename,idx)  # process file
     self.combine_output_files()  # combine all LITTLE_R files
+
+  def cleanup_workdir(self):
+    '''
+    cleanup previous results in workdir
+    '''
+    import glob
+    try:
+      [os.remove(file) for file in glob.glob('workdir/results*txt')]
+    except OSError:
+      pass
 
   def read_filelist(self):
     '''
@@ -60,7 +71,6 @@ class wrapper_littler:
       pass
     # extract time interval from input netcdf file, save as out.nc  
     command = 'cdo seldate,' + self.t_min + ',' + self.t_max + ' ' + filename + ' workdir/out.nc'
-    print command
     # execute command, catch exceptions
     try:
       # cdo requires shell=True in subprocess.call
@@ -68,11 +78,17 @@ class wrapper_littler:
                                                                  'wb'))
     except OSError as e:
       print >>sys.stderr, "Execution failed:", e
-    
+
+    # if retcode!=0, no out.nc file is created, skip rest of function
+    if retcode != 0:
+      print "cdo failed"
+      return
+
     # edit namelist
     namelist_set('workdir/wageningen_single.namelist', 'group_name:filename', 'out.nc')
     namelist_set('workdir/wageningen_single.namelist', 'group_name:outfile',
                  'results' + str(idx).zfill(3) +'.txt')
+
     # convert resulting ncdf file to little_R format
     owd = os.getcwd()
     try:
