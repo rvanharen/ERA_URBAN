@@ -22,11 +22,21 @@ class wrapper_littler:
   def __init__(self,filelist, obsproc_namelist):
     self.cleanup_workdir()
     self.filelist = filelist
+    self.obsproc_namelist = obsproc_namelist
+    self.test_input()
     self.read_filelist()  # create list of filenames
-    self.namelist_obsproc(obsproc_namelist)  # extract time-window
+    self.namelist_obsproc(self.obsproc_namelist)  # extract time-window
     for idx, filename in enumerate(self.files):  # loop over all files
       self.process_file(filename,idx)  # process file
     self.combine_output_files()  # combine all LITTLE_R files
+
+  def test_input(self):
+    if not os.path.exists(self.filelist):
+      raise IOError(self.filelist + ' not found.')
+    elif not os.path.exists(self.obsproc_namelist):
+      raise IOError(self.obsproc_namelist + ' not found.')
+    else:
+      pass
 
   def cleanup_workdir(self):
     '''
@@ -115,4 +125,21 @@ class wrapper_littler:
         fout.write(line)
 
 if __name__=="__main__":
-  wrapper_littler('filelist', '/data/github/WRFDA/var/obsproc/namelist.obsproc')
+  # define logger
+  #logname = os.path.basename(__file__) + '.log'
+  #logger = utils.start_logging(filename=logname, level='info')
+  #global logger
+
+  # define argument menu
+  description = 'Time filter Wunderground netCDF data'
+  parser = argparse.ArgumentParser(description=description)
+  # fill argument groups
+  parser.add_argument('-f', '--filelist', help='filelist containing netcdf files',
+                      default='wrapper.filelist', required=False)
+  parser.add_argument('-o', '--obsproc', help='obsproc namelist',
+                      default='namelist.obsproc', required=False)
+  opts = parser.parse_args()
+
+  # main function
+  #wrapper_littler('filelist', '/data/github/WRFDA/var/obsproc/namelist.obsproc')
+  wrapper_littler(opts.filelist, opts.obsproc)
