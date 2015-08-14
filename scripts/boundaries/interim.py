@@ -119,7 +119,7 @@ def main(args):
     server.retrieve(sfc)
   
   # move downloaded data to data directory
-  move_downloaded_data(args.datadir, re.sub('-','',date_string) + '00')
+  move_downloaded_data(args.datadir, re.sub('-','',args.date) + '00')
 
 def str2bool(v):
   '''
@@ -130,7 +130,7 @@ def str2bool(v):
 if __name__=="__main__":
   # define argument parser
   parser = argparse.ArgumentParser(description='Download ERA-Interim fields (pl and sfc) to be used as WRF boundaries.')
-  
+
   # optional arguments
   parser.add_argument('--pl', help='download pressure level fields [boolean, default: true]',
                       default=True, type=str2bool, required=False)
