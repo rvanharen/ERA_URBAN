@@ -21,7 +21,7 @@ def read_knmi_data(reference_station):
     from numpy import concatenate
     import collections    
     # generate filename of KNMI station
-    filenames = sort(glob.glob('KNMI/uurgeg_' + reference_station + '*.zip' ))
+    filenames = sort(glob.glob('KNMI/uurgeg_' + str(reference_station) + '*.zip' ))
     filenames = filenames[0:2]
     # load all csv files in list of dictionaries
     dicts = [load_knmi_data(filename).csvdata for filename in filenames]
@@ -176,11 +176,13 @@ def load_csv_data(csvfile):
                     csvdata[k].append(fitem(v))
     return csvdata
 
+
 if __name__=="__main__":
   knmi_csv_info = load_csv_data('knmi_reference_data.csv')
   station_ids = [int(x) for x in knmi_csv_info['station_id']]
   
   for station in station_ids:
+    import pdb; pdb.set_trace()
     lat = knmi_csv_info['latitude'][station_ids.index(station)]
     lon = knmi_csv_info['longitude'][station_ids.index(station)]
     data = read_knmi_data(station)
