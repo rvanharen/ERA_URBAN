@@ -7,6 +7,8 @@ licence:      Apache 2.0
 '''
 
 from numpy import concatenate as npconcatenate
+import csv
+
 def read_knmi_data(reference_station):
     '''
     Calculate or load KNMI reference data:
@@ -46,9 +48,9 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   from numpy import nan as npnan
   from numpy import dtype
   import time
-  ncfile = ncdf('output'+stationid+'.nc', 'w', format='NETCDF4')
+  ncfile = ncdf('output'+str(stationid)+'.nc', 'w', format='NETCDF4')
   # description of the file
-  ncfile.description = 'KNMI ' + stationid
+  ncfile.description = 'KNMI ' + str(stationid)
   ncfile.history = 'Created ' + time.ctime(time.time())
   # create time dimension
   timevar = ncfile.createDimension('time', None)
@@ -147,6 +149,39 @@ def is_number(s):
     return False
 
 
+def load_csv_data(csvfile):
+    '''
+    load data csvfile
+    '''
+    with open(csvfile, 'r') as csvin:
+        reader = csv.DictReader(csvin, delimiter=',')
+        try:
+            csvdata
+        except UnboundLocalError:
+            reader.next()
+            try:
+                csvdata = {k.strip(): [fitem(v)] for k, v in
+                                reader.next().items()}
+            except StopIteration:
+                pass
+        current_row = 0
+        for line in reader:
+            current_row += 1
+            if current_row == 1:  # header
+                # skip the header
+                continue
+            for k, v in line.items():
+                if k is not None:  # skip over empty fields
+                    k = k.strip()
+                    csvdata[k].append(fitem(v))
+    return csvdata
+
 if __name__=="__main__":
-  data = read_knmi_data('260')
-  write_combined_data_netcdf(data, '260', 3, 5)
+  knmi_csv_info = load_csv_data('knmi_reference_data.csv')
+  station_ids = [int(x) for x in knmi_csv_info['station_id']]
+  
+  for station in station_ids:
+    lat = knmi_csv_info['latitude'][station_ids.index(station)]
+    lon = knmi_csv_info['longitude'][station_ids.index(station)]
+    data = read_knmi_data(station)
+    write_combined_data_netcdf(data, station, lon, lat)
