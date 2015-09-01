@@ -22,7 +22,6 @@ def read_knmi_data(reference_station):
     import collections    
     # generate filename of KNMI station
     filenames = sort(glob.glob('KNMI/uurgeg_' + str(reference_station) + '*.zip' ))
-    filenames = filenames[0:2]
     # load all csv files in list of dictionaries
     dicts = [load_knmi_data(filename).csvdata for filename in filenames]
     # merge all dictionaries in a super dictionary
@@ -182,7 +181,6 @@ if __name__=="__main__":
   station_ids = [int(x) for x in knmi_csv_info['station_id']]
   
   for station in station_ids:
-    import pdb; pdb.set_trace()
     lat = knmi_csv_info['latitude'][station_ids.index(station)]
     lon = knmi_csv_info['longitude'][station_ids.index(station)]
     data = read_knmi_data(station)
