@@ -1,7 +1,10 @@
 #!/usr/bin/env python2
 
 '''
-description:  
+description:  Convert directory with downloaded zipped KNMI ascii files to
+              netCDF format. Station information is obtained from a csv file.
+              Creation of the csv file and downloading of the KNMI data is
+              performed in another script (knmi_getdata.py).
 author:       Ronald van Haren, NLeSC (r.vanharen@esciencecenter.nl)
 licence:      Apache 2.0
 '''
