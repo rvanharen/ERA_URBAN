@@ -60,9 +60,8 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   lonvar = ncfile.createDimension('longitude', 1)
   latvar = ncfile.createDimension('latitude', 1)
   # inititalize time axis
-  timeaxis = [netcdftime.date2num(data['datetime'][idx], units='minutes since 2010-01-01 00:00:00',
-                                 calendar='gregorian') for idx in range(0,len(data['datetime']))]
-
+  timeaxis = [int(round(netcdftime.date2num(data['datetime'][idx], units='minutes since 2010-01-01 00:00:00',
+                                 calendar='gregorian'))) for idx in range(0,len(data['datetime']))]
   # netcdf time variable UTC
   timevar = ncfile.createVariable('time', 'i4', ('time',),
                                   zlib=True)
@@ -182,7 +181,6 @@ def load_csv_data(csvfile):
 if __name__=="__main__":
   knmi_csv_info = load_csv_data('knmi_reference_data.csv')
   station_ids = [int(x) for x in knmi_csv_info['station_id']]
-  
   for station in station_ids:
     lat = knmi_csv_info['latitude'][station_ids.index(station)]
     lon = knmi_csv_info['longitude'][station_ids.index(station)]
