@@ -27,7 +27,6 @@ class get_knmi_reference_data:
     description
     '''
     def __init__(self, opts):
-        #self.outputdir = opts.outputdir
         self.csvfile = opts.csvfile
         self.outputdir = opts.outputdir
         self.keep = opts.keep
@@ -43,21 +42,38 @@ class get_knmi_reference_data:
         '''
         get all stationids from the KNMI website
         '''
-        self.url = 'http://www.knmi.nl/klimatologie/uurgegevens/'
+        self.url = 'http://www.knmi.nl/nederland-nu/klimatologie/uurgegevens'
         page = parse(self.url)
         # get list of ids
         rows = page.xpath(".//tbody/@id")
         #self.stationids = [int(stationid[3:]) for stationid in rows]
         self.stationids = [str(stationid) for stationid in rows]
+        # get station names for stationids
+        url = 'http://projects.knmi.nl/klimatologie/metadata/index.html'
+        page = parse(url)
+        url_metadata = page.xpath(".//table/tr/td/a/@href")
+        station_name_id = [c.text for c in page.xpath(".//table/tr/td/a")]
+        stationids = [s.split()[0] for s in station_name_id]
+        station_names = [" ".join(s.split()[1:]) for s in station_name_id]
+        self.stationids = [stationids[idx] + ' - ' + station_names[idx] for
+                           idx in range(0,len(stationids))]
+        #self.stationids = [s.split()[0] for s in station_name_id]
+        #import pdb; pdb.set_trace()
+        #self.stationids = [s.split()[0] for s in station_name_id]
+        #import pdb; pdb.set_trace()
         
 
     def download_station_data(self):
         page = parse(self.url)
+        # find location of stations on web page
+        num_stations = len(page.xpath("/html/body/main/div[2]/div"))
+        station_elements = [page.xpath("/html/body/main/div[2]/div["+str(idx)+"]/div/div/div[2]/table/thead/tr/th") for idx in range(0,num_stations)]
+        station_names = [x[0].text if len(x)>0 else 'ndf' for x in station_elements]
         for stationid in self.stationids:
-            print stationid
-            relpaths = page.xpath(".//tbody[@id='" + stationid + "']/tr/td/span/a/@href")
+            div_id = str(station_names.index(stationid))
+            relpaths = page.xpath("/html/body/main/div[2]/div["+div_id+"]/div/div/div[2]/table/tbody/tr/td/a/@href")            
             for path in relpaths:
-                fullpath = os.path.join(self.url, path)
+                fullpath = "http:" + path
                 request = urllib2.urlopen(fullpath)
                 filename = os.path.basename(path)
                 outputfile = os.path.join(self.outputdir, filename)
@@ -79,7 +95,7 @@ class get_knmi_reference_data:
 
     def get_station_locations(self):
         # get station names for stationids
-        url = 'http://www.knmi.nl/klimatologie/metadata/stationslijst.html'
+        url = 'http://projects.knmi.nl/klimatologie/metadata/index.html'
         page = parse(url)
         url_metadata = page.xpath(".//table/tr/td/a/@href")
         station_name_id = [c.text for c in page.xpath(".//table/tr/td/a")]
