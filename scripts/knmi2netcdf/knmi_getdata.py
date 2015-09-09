@@ -31,10 +31,8 @@ class get_knmi_reference_data:
         self.outputdir = opts.outputdir
         self.keep = opts.keep
         self.check_output_dir()
-        if len(opts.stationid)==0:
-            self.get_station_ids()
-        else:
-            self.stationdids = [opts.stationid]
+        self.station = opts.stationid
+        self.get_station_ids()
         self.download_station_data()
         self.get_station_locations()
 
@@ -42,58 +40,68 @@ class get_knmi_reference_data:
         '''
         get all stationids from the KNMI website
         '''
-        self.url = 'http://www.knmi.nl/nederland-nu/klimatologie/uurgegevens'
-        page = parse(self.url)
-        # get list of ids
-        rows = page.xpath(".//tbody/@id")
-        #self.stationids = [int(stationid[3:]) for stationid in rows]
-        self.stationids = [str(stationid) for stationid in rows]
-        # get station names for stationids
+        import re
         url = 'http://projects.knmi.nl/klimatologie/metadata/index.html'
         page = parse(url)
         url_metadata = page.xpath(".//table/tr/td/a/@href")
         station_name_id = [c.text for c in page.xpath(".//table/tr/td/a")]
         stationids = [s.split()[0] for s in station_name_id]
-        station_names = [" ".join(s.split()[1:]) for s in station_name_id]
-        self.stationids = [stationids[idx] + ' - ' + station_names[idx] for
-                           idx in range(0,len(stationids))]
-        #self.stationids = [s.split()[0] for s in station_name_id]
-        #import pdb; pdb.set_trace()
-        #self.stationids = [s.split()[0] for s in station_name_id]
-        #import pdb; pdb.set_trace()
+        bad_chars = '(){}<>'
+        self.rgx = re.compile('[%s]' % bad_chars)
+        station_names = [re.sub(self.rgx, '', " ".join(s.split()[1:])) for s in station_name_id]
+        if len(self.station)==0:
+            self.stationids = [stationids[idx] + ' - ' + station_names[idx] for
+                              idx in range(0,len(stationids))]
+        else:
+          idx = stationids.index(self.station)
+          self.stationids = [stationids[idx] + ' - ' + station_names[idx]]
         
 
     def download_station_data(self):
-        page = parse(self.url)
+        ''''
+        download zip files containing csv station data
+        (complete time series for all KNMI stations)
+        '''
+        import re
+        url = 'http://www.knmi.nl/nederland-nu/klimatologie/uurgegevens'
+        page = parse(url)
         # find location of stations on web page
         num_stations = len(page.xpath("/html/body/main/div[2]/div"))
         station_elements = [page.xpath("/html/body/main/div[2]/div["+str(idx)+"]/div/div/div[2]/table/thead/tr/th") for idx in range(0,num_stations)]
-        station_names = [x[0].text if len(x)>0 else 'ndf' for x in station_elements]
+        station_names = [re.sub(self.rgx, '', x[0].text) if len(x)>0 else 'ndf'
+                         for x in station_elements]
         for stationid in self.stationids:
             div_id = str(station_names.index(stationid))
-            relpaths = page.xpath("/html/body/main/div[2]/div["+div_id+"]/div/div/div[2]/table/tbody/tr/td/a/@href")            
+            relpaths = page.xpath("/html/body/main/div[2]/div["+div_id+"]/div/div/div[2]/table/tbody/tr/td/a/@href")
             for path in relpaths:
-                fullpath = "http:" + path
-                request = urllib2.urlopen(fullpath)
-                filename = os.path.basename(path)
-                outputfile = os.path.join(self.outputdir, filename)
-                if self.keep:
-                    if os.path.exists(outputfile):
-                        # check if filesize is not null
-                        if os.path.getsize(outputfile) > 0:
-                            # file exists and is not null, continue next iteration
-                            continue
-                        else:
-                            # file exists but is null, so remove and redownload
-                            os.remove(outputfile)
-                elif os.path.exists(outputfile):
-                    os.remove(outputfile)
-                #save
-                output = open(outputfile, "w")
-                output.write(request.read())
-                output.close()
+                try:
+                    fullpath = "http:" + path
+                    request = urllib2.urlopen(fullpath)
+                    filename = os.path.basename(path)
+                    outputfile = os.path.join(self.outputdir, filename)
+                    if self.keep:
+                        if os.path.exists(outputfile):
+                            # check if filesize is not null
+                            if os.path.getsize(outputfile) > 0:
+                                # file exists and is not null, continue next iteration
+                                continue
+                            else:
+                                # file exists but is null, so remove and redownload
+                                os.remove(outputfile)
+                    elif os.path.exists(outputfile):
+                        os.remove(outputfile)
+                    #save
+                    output = open(outputfile, "w")
+                    output.write(request.read())
+                    output.close()
+                except urllib2.HTTPError:
+                      print "Error downloading file " + fullpath
+
 
     def get_station_locations(self):
+        '''
+        write station name, id and location to csv file
+        '''
         # get station names for stationids
         url = 'http://projects.knmi.nl/klimatologie/metadata/index.html'
         page = parse(url)
@@ -123,9 +131,6 @@ class get_knmi_reference_data:
         dataout = vstack((header, dataout))
         # write to csv file
         utils.write_csvfile(self.csvfile, dataout)
-        
-        # get station locations
-        pass
 
     def latlon_conversion(self, lat, lon):
         '''
