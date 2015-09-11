@@ -20,9 +20,10 @@ class wrapper_littler:
   list of netcdf files defined in an input file.
   '''
   def __init__(self,filelist, obsproc_namelist):
-    self.cleanup_workdir()
     self.filelist = filelist
+    self.workdir = './workdir'
     self.obsproc_namelist = obsproc_namelist
+    self.cleanup_workdir()
     self.test_input()
     self.read_filelist()  # create list of filenames
     self.namelist_obsproc(self.obsproc_namelist)  # extract time-window
@@ -40,13 +41,20 @@ class wrapper_littler:
 
   def cleanup_workdir(self):
     '''
-    cleanup previous results in workdir
+    cleanup previous results and copy files to workdir
     '''
-    import glob
+    import shutil
+    if os.path.exists(self.workdir):
+      # remove workdir if exists
+      shutil.rmtree(self.workdir)
+    # create workdir
     try:
-      [os.remove(file) for file in glob.glob('workdir/results*txt')]
-    except OSError:
-      pass
+      os.makedirs(self.workdir)
+    except IOError:
+      raise IOError('Cannot create work directory: ' + self.workdir)
+    # copy files to workdir
+    files = ['convert_littler', 'wageningen.namelist']
+    [ shutil.copy(file, self.workdir) for file in files ] 
 
   def read_filelist(self):
     '''
@@ -80,30 +88,32 @@ class wrapper_littler:
     except OSError:
       pass
     # extract time interval from input netcdf file, save as out.nc  
-    command = 'cdo seldate,' + self.t_min + ',' + self.t_max + ' ' + filename + ' workdir/out.nc'
-    # execute command, catch exceptions
-    try:
-      # cdo requires shell=True in subprocess.call
-      retcode = subprocess.call(command, shell=True, stdout=open(os.devnull,
-                                                                 'wb'))
-    except OSError as e:
-      print >>sys.stderr, "Execution failed:", e
+    commands = ['cdo seldate,' + self.t_min + ',' + self.t_max + ' ' + filename + ' workdir/out.nc',
+               'ncks -A -v longitude,latitude ' + filename + ' workdir/out.nc']
+    for command in commands:
+      # execute command, catch exceptions
+      try:
+        # cdo requires shell=True in subprocess.call
+        retcode = subprocess.call(command, shell=True, stdout=open(os.devnull,
+                                                                  'wb'))
+      except OSError as e:
+        print >>sys.stderr, "Execution failed:", e
 
-    # if retcode!=0, no out.nc file is created, skip rest of function
-    if retcode != 0:
-      print "cdo failed"
-      return
+      # if retcode!=0, no out.nc file is created, skip rest of function
+      if retcode != 0:
+        print "Execution of command failed: " + command
+        return
 
     # edit namelist
-    namelist_set('workdir/wageningen_single.namelist', 'group_name:filename', 'out.nc')
-    namelist_set('workdir/wageningen_single.namelist', 'group_name:outfile',
+    namelist_set('workdir/wageningen.namelist', 'group_name:filename', 'out.nc')
+    namelist_set('workdir/wageningen.namelist', 'group_name:outfile',
                  'results' + str(idx).zfill(3) +'.txt')
 
     # convert resulting ncdf file to little_R format
     owd = os.getcwd()
     try:
       os.chdir('workdir')
-      retcode = subprocess.call('./convert_littler_single',
+      retcode = subprocess.call('./convert_littler',
                                 stdout=open(os.devnull, 'wb'))
     except OSError as e:
       print >>sys.stderr, "Execution failed:", e
