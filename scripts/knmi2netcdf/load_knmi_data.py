@@ -75,7 +75,7 @@ class load_knmi_data:
         self.csvdata['RH'] = [0 if item == -1 else
                                   item for item in self.csvdata['RH']]
         # process all variables that need to be divided by 10
-        for variable in ['T10', 'T', 'RH', 'FF']:
+        for variable in ['T10', 'T', 'RH', 'FF', 'TD']:
             # T10: temperature at 10 cm height, divide by 10 to convert to degC
             # T: temperature at 1.50 m height, divide by 10 to convert to degC
             # RH: rain
