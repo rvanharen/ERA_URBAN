@@ -65,12 +65,10 @@ def load_file(station_zip):
                 in filename ]
   metadata_files = [ filename for filename in zipf.namelist() if
                     'Stationsmetadaten' in filename ]
-  for filename in data_files:
-    station_dict = read_data(zipf.open(filename))
-  for metadata_file in metadata_files:
-    meta_dict = pandas.read_csv(zipf.open(metadata_file), engine='c', sep=';',
-                                skipinitialspace=True,
-                                header=0).to_dict(orient='records')
+  station_dict = read_data(zipf.open(data_files[0]))
+  meta_dict = pandas.read_csv(zipf.open(metadata_files[0]), engine='c', sep=';',
+                              skipinitialspace=True,
+                              header=0).to_dict(orient='records')
   return station_dict, meta_dict
 
 
@@ -88,10 +86,19 @@ def read_data(filename):
   '''
   Read csv data and return dictionary: index->
   '''
-  csvdict = pandas.read_csv(filename, engine='c', sep=';',
-                            parse_dates=['MESS_DATUM'], index_col=['MESS_DATUM'],
-                            header=0, skipinitialspace=True).to_dict(
-                            orient='index')
+  try:
+    csvdict = pandas.read_csv(filename, engine='c', sep=';',
+                              parse_dates=['MESS_DATUM'], index_col=['MESS_DATUM'],
+                              header=0, skipinitialspace=True).to_dict(
+                              orient='index')
+  except ValueError:
+    try:
+      csvdict = pandas.read_csv(filename, engine='c', sep=';',
+                                parse_dates=['Mess_Datum'], index_col=['Mess_Datum'],
+                                header=0, skipinitialspace=True).to_dict(
+                                orient='index')
+    except ValueError:
+      return None
   return csvdict
 
 def merge_dicts(*dict_args):
@@ -354,16 +361,20 @@ def split_data(results, metadata):
     data = hstack((data,tmp_out))
   return data
 
-def main()
+def main():
   dirs = get_variables()
-  ids = get_list_of_stations(dirs)
+  ids = np.sort(get_list_of_stations(dirs))
   for st in range(0,len(ids)):
+    print (ids[st])
     station_files = find_station_files(ids[st])
     station_dicts = []
     metadata_dicts = []
     for sfile in station_files:
       # load data in list of dicts
+      print (sfile)
       sdict, mdict = load_file(sfile)
+      if sdict == None:
+        continue
       station_dicts = hstack((station_dicts, sdict))
       metadata_dicts = hstack((metadata_dicts, mdict))
     # merge station data dicts
