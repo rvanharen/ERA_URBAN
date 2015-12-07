@@ -161,7 +161,7 @@ def convert_dict(dict_of_dicts):
     except KeyError:
       clouds[idx] = -999
     try:
-      precipitation[idx] = dict_of_dicts[c]['NIEDERSCHLAG_GEFALLEN_IND']
+      precipitation[idx] = dict_of_dicts[c]['NIEDERSCHLAGSHOEHE']
     except KeyError:
       precipitation[idx] = -999
     try:
@@ -177,11 +177,12 @@ def convert_dict(dict_of_dicts):
   d['windspeed'] = windspeed
   d['clouds'] = clouds
   d['precipitation'] = precipitation
+  d['temperature'] = temperature
   d['time'] = [datetime.strptime(str(int(item)), ('%Y%m%d%H')) for
                item in time_axis]
   return d  
 
-def write_combined_data_netcdf(data, stationid, lon, lat):
+def write_combined_data_netcdf(data, stationid):
   '''
   description
   '''
@@ -202,9 +203,11 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   # create lon/lat dimensions
   lonvar = ncfile.createDimension('longitude', 1)
   latvar = ncfile.createDimension('latitude', 1)
+  elevation_var = ncfile.createDimension('elevation', 1)
+
   # inititalize time axis
-  timeaxis = [int(round(netcdftime.date2num(data['datetime'][idx], units='minutes since 2010-01-01 00:00:00',
-                                 calendar='gregorian'))) for idx in range(0,len(data['datetime']))]
+  timeaxis = [int(round(netcdftime.date2num(data['time'][idx], units='minutes since 2010-01-01 00:00:00',
+                                 calendar='gregorian'))) for idx in range(0,len(data['time']))]
   # netcdf time variable UTC
   timevar = ncfile.createVariable('time', 'i4', ('time',),
                                   zlib=True)
@@ -219,16 +222,23 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   lonvar.units = 'degrees_east'
   lonvar.axis = 'X'
   lonvar.standard_name = 'longitude'
-  lonvar[:] = lon
+  lonvar[:] = data['longitude']
   latvar = ncfile.createVariable('latitude',dtype('float32').char,('latitude',))
   latvar.units = 'degrees_north'
   latvar.axis = 'Y'
   latvar.standard_name = 'latitude'
-  latvar[:] = lat
+  latvar[:] = data['latitude']
 
+  # elevation
+  elevation_var = ncfile.createVariable('elevation', dtype('float32').char, ('elevation',))
+  elevation_var.units = 'meters'
+  elevation_var.axis = 'Z'
+  elevation_var.standard_name = 'height'
+  elevation_var[:] = data['elevation']
+  
   # create other variables in netcdf file
   for variable in data.keys():
-    if variable not in ['YYYMMDD', 'Time', '<br>', 'datetime', '# STN', None]:
+    if variable not in ['time', 'longitude', 'latitude', 'elevation', None]:
       # add variables in netcdf file
       # convert strings to npnan if array contains numbers
       if True in [is_number(c)
@@ -335,37 +345,44 @@ def split_data(results, metadata):
     tmp = [ { key : results[key][idx] for key in results.keys() }
             for idx, x in enumerate(results["time"]) if
             metadata['von_datum'][idd]<=x<=metadata['bis_datum'][idd]]
+    if not tmp:
+      continue  # no measurements found for time period
     tmp_out = list_of_dict_to_dict_of_lists(tmp)
     tmp_out['longitude'] = metadata['Geogr.Breite'][idd]
     tmp_out['latitude'] = metadata['Geogr.Laenge'][idd]
     tmp_out['elevation'] = metadata['Stationshoehe'][idd]
-    hstack((data,tmp_out))
+    data = hstack((data,tmp_out))
   return data
+
+def main()
+  dirs = get_variables()
+  ids = get_list_of_stations(dirs)
+  for st in range(0,len(ids)):
+    station_files = find_station_files(ids[st])
+    station_dicts = []
+    metadata_dicts = []
+    for sfile in station_files:
+      # load data in list of dicts
+      sdict, mdict = load_file(sfile)
+      station_dicts = hstack((station_dicts, sdict))
+      metadata_dicts = hstack((metadata_dicts, mdict))
+    # merge station data dicts
+    results = reduce(merge, station_dicts)
+    # generate output dictionary
+    results = convert_dict(results)
+    # convert metadata_dicts
+    metadata = convert_meta_dict(metadata_dicts)
+    # split station data based on station location movements as specified
+    # in the metadata
+    r2 = split_data(results, metadata)
+    for idx in range(0,len(r2)):
+      if idx > 0:
+        write_combined_data_netcdf(r2[idx], ids[st] + '_' + str(idx+1))
+      else:
+        write_combined_data_netcdf(r2[idx], ids[st])
 
 
 if __name__=="__main__":
-  dirs = get_variables()
-  ids = get_list_of_stations(dirs)
-  station_files = find_station_files(ids[0])
-  station_dicts = []
-  metadata_dicts = []
-  for sfile in station_files:
-    # load data in list of dicts
-    sdict, mdict = load_file(sfile)
-    station_dicts = hstack((station_dicts, sdict))
-    metadata_dicts = hstack((metadata_dicts, mdict))
+  main()
 
-  # merge station data dicts
-  results = reduce(merge, station_dicts)
-  # generate output dictionary
-  results = convert_dict(results)
 
-  # convert metadata_dicts
-  metadata = convert_meta_dict(metadata_dicts)
-
-  # split station data based on station location movements as specified
-  # in the metadata
-  r2, m2 = split_data(results, metadata)
-  
-  import pdb; pdb.set_trace()
-  # TODO: write as netcdf file
