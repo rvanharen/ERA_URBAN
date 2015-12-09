@@ -11,6 +11,7 @@ licence:      Apache 2.0
 
 from numpy import concatenate as npconcatenate
 import csv
+import os
 
 def read_knmi_data(reference_station):
     '''
@@ -22,7 +23,7 @@ def read_knmi_data(reference_station):
     import glob
     from numpy import sort
     from numpy import concatenate
-    import collections    
+    import collections
     # generate filename of KNMI station
     filenames = sort(glob.glob('KNMI/uurgeg_' + str(reference_station) + '*.zip' ))
     # load all csv files in list of dictionaries
@@ -38,7 +39,7 @@ def read_knmi_data(reference_station):
     # return dictionary with all variables/time steps
     return knmi_data
 
-def write_combined_data_netcdf(data, stationid, lon, lat):
+def write_combined_data_netcdf(data, stationid, lon, lat, elevation):
   '''
   description
   '''
@@ -59,6 +60,8 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   # create lon/lat dimensions
   lonvar = ncfile.createDimension('longitude', 1)
   latvar = ncfile.createDimension('latitude', 1)
+  # elevation
+  elvar = ncfile.createDimension('elevation', 1)
   # inititalize time axis
   timeaxis = [int(round(netcdftime.date2num(data['datetime'][idx], units='minutes since 2010-01-01 00:00:00',
                                  calendar='gregorian'))) for idx in range(0,len(data['datetime']))]
@@ -74,17 +77,27 @@ def write_combined_data_netcdf(data, stationid, lon, lat):
   # lon/lat variables
   lonvar = ncfile.createVariable('longitude',dtype('float32').char,('longitude',))
   lonvar.units = 'degrees_east'
+  lonvar.axis = 'X'
+  lonvar.standard_name = 'longitude'
   lonvar[:] = lon
   latvar = ncfile.createVariable('latitude',dtype('float32').char,('latitude',))
   latvar.units = 'degrees_north'
+  latvar.axis = 'Y'
+  latvar.standard_name = 'latitude'
   latvar[:] = lat
 
+  # elevation variable
+  elvar = ncfile.createVariable('elevation', dtype('float32').char, ('elevation',))
+  elvar.units = 'meter'
+  elvar.axis = 'Z'
+  elvar.standard_name = 'elevation'
+  elvar[:] = elevation
+  
   # create other variables in netcdf file
   for variable in data.keys():
     if variable not in ['YYYMMDD', 'Time', '<br>', 'datetime', '# STN', None]:
       # add variables in netcdf file
       # convert strings to npnan if array contains numbers
-      print variable
       if True in [is_number(c)
         for c in data[variable]]:
           data[variable] = [npnan if isinstance(
@@ -168,7 +181,7 @@ def load_csv_data(csvfile):
         current_row = 0
         for line in reader:
             current_row += 1
-            if current_row == 1:  # header
+            if current_row == 0:  # header
                 # skip the header
                 continue
             for k, v in line.items():
@@ -182,7 +195,11 @@ if __name__=="__main__":
   knmi_csv_info = load_csv_data('knmi_reference_data.csv')
   station_ids = [int(x) for x in knmi_csv_info['station_id']]
   for station in station_ids:
+    if os.path.isfile('output' + str(station) + '.nc'):
+      continue
+    print (station)
     lat = knmi_csv_info['latitude'][station_ids.index(station)]
     lon = knmi_csv_info['longitude'][station_ids.index(station)]
+    elevation = knmi_csv_info['elevation'][station_ids.index(station)]
     data = read_knmi_data(station)
-    write_combined_data_netcdf(data, station, lon, lat)
+    write_combined_data_netcdf(data, station, lon, lat, elevation)
