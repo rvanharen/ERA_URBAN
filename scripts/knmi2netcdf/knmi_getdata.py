@@ -33,6 +33,7 @@ class get_knmi_reference_data:
         self.check_output_dir()
         self.station = opts.stationid
         self.get_station_ids()
+        print (self.stationids)
         self.download_station_data()
         self.get_station_locations()
 
@@ -120,14 +121,17 @@ class get_knmi_reference_data:
                 '\xc2\xb0','').replace(' N.B. ', ',').replace(
                     'O.L.','').strip().split(',')
             lat,lon = self.latlon_conversion(lat,lon)
+            idx_elevation = rows.index('Terreinhoogte:') + 1
+            elevation = float(rows[idx_elevation].encode('UTF-8').split(' ')[0].replace(',','.'))
+
             try:
                 dataout = vstack((dataout,
                                  [station_id[idx], station_names[idx],
-                                  lat, lon, station_url]))
+                                  lat, lon, elevation, station_url]))
             except NameError:
                 dataout = [station_id[idx], station_names[idx],
-                           lat, lon, station_url]
-        header = ['station_id', 'station_name','latitude', 'longitude', 'url']
+                           lat, lon, elevation, station_url]
+        header = ['station_id', 'station_name','latitude', 'longitude', 'elevation', 'url']
         dataout = vstack((header, dataout))
         # write to csv file
         utils.write_csvfile(self.csvfile, dataout)
